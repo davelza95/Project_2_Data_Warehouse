@@ -14,10 +14,10 @@ SONG_DATA = config.get("S3", "SONG_DATA")
 staging_events_table_drop = "DROP TABLE IF EXISTS staging_events"
 staging_songs_table_drop = "DROP TABLE IF EXISTS staging_songs"
 songplay_table_drop = "DROP TABLE IF EXISTS songplay"
-user_table_drop = "DROP TABLE IF EXISTS user"
 song_table_drop = "DROP TABLE IF EXISTS song"
 artist_table_drop = "DROP TABLE IF EXISTS artist"
 time_table_drop = "DROP TABLE IF EXISTS time"
+user_table_drop = "DROP TABLE IF EXISTS users"
 
 
 staging_events_table_create = """
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS staging_events
      song_id         VARCHAR NOT NULL,
      title           VARCHAR NOT NULL,
      duration        DECIMAL NOT NULL,
-     year            INT NOT NULL,
+     year            INT NOT NULL
   )
 """
 
@@ -55,28 +55,28 @@ CREATE TABLE IF NOT EXISTS staging_songs
      status        INTEGER NOT NULL,
      ts            TIMESTAMP,
      useragent     VARCHAR,
-     userid        INTEGER NOT NULL,
+     userid        INTEGER NOT NULL
   )
 """
 songplay_table_create = """
 CREATE TABLE IF NOT EXISTS songplay
   (
-     songplay_id VARCHAR IDENTITY(0,1) sortkey distkey,
+     songplay_id INTEGER IDENTITY(0,1) sortkey distkey,
      start_time  DATE NOT NULL,
-     user_id     VARCHAR,
+     user_id     VARCHAR FOREIGN KEY,
      level       VARCHAR,
      song_id     VARCHAR,
      artist_id   VARCHAR,
      session_id  VARCHAR NOT NULL,
      location    VARCHAR,
-     user_agent  VARCAHR NOT NULL,
+     user_agent  VARCHAR NOT NULL,
      PRIMARY KEY(songplay_id)
    )
-  ,
 """
 
 user_table_create = """
-CREATE TABLE IF NOT EXISTS user
+CREATE TABLE IF NOT EXISTS users
+
   (
      user_id    VARCHAR sortkey,
      first_name VARCHAR,
@@ -128,21 +128,18 @@ CREATE TABLE IF NOT EXISTS time
 # STAGING TABLES
 
 staging_events_copy = """
-copy staging_events FROM {}
-credentials 'aws_iam_role={}'
-format
-AS
-  json 'auto' region 'us-west-2' {}
+copy staging_events FROM '{}'
+iam_role '{}'
+format as json '{}'
 """.format(
     LOG_DATA, ARN, LOG_JSONPATH
 )
 
+
 staging_songs_copy = """
-copy staging_songs FROM {}
-credentials 'aws_iam_role={}'
-format
-AS
-  json 'auto' region 'us-west-2'
+copy staging_songs FROM '{}'
+iam_role '{}'
+format as json 'auto'
 """.format(
     SONG_DATA, ARN
 )
@@ -171,7 +168,6 @@ FROM   staging_events se
        JOIN staging_songs ss
          ON (se.title = ss.song AND se.artist = ss.artist_name)
 WHERE  se.page = 'NextSong'
-
 """
 
 user_table_insert = """
@@ -190,7 +186,7 @@ FROM   staging_events se
 """
 
 song_table_insert = """
-INSERT INTO users
+INSERT INTO song
             (user_id,
              first_name,
              last_name,
@@ -206,7 +202,7 @@ FROM   staging_events se
 """
 
 artist_table_insert = """
-INSERT INTO artists
+INSERT INTO artist
             (artist_id,
              name,
              location,
@@ -236,7 +232,7 @@ SELECT DISTINCT sp.start_time,
                 Extract(month FROM sp.start_time),
                 Extract(year FROM sp.start_time),
                 Extract(dayofweek FROM sp.start_time)
-FROM   songplays sp
+FROM   songplay sp
 """
 
 # QUERY LISTS
@@ -259,6 +255,7 @@ drop_table_queries = [
     artist_table_drop,
     time_table_drop,
 ]
+
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [
     songplay_table_insert,
