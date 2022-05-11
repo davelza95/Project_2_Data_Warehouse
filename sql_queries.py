@@ -20,10 +20,10 @@ time_table_drop = "DROP TABLE IF EXISTS time"
 user_table_drop = "DROP TABLE IF EXISTS users"
 
 
-staging_events_table_create = """
-CREATE TABLE IF NOT EXISTS staging_events
+staging_songs_table_create = """
+CREATE TABLE IF NOT EXISTS staging_songs
   (
-     num_songs       INT NOT NULL,
+     num_songs       INTEGER NOT NULL,
      artist_id       VARCHAR NOT NULL,
      artist_latitude DECIMAL,
      artist_location DECIMAL,
@@ -31,12 +31,12 @@ CREATE TABLE IF NOT EXISTS staging_events
      song_id         VARCHAR NOT NULL,
      title           VARCHAR NOT NULL,
      duration        DECIMAL NOT NULL,
-     year            INT NOT NULL
+     year            INTEGER
   )
 """
 
-staging_songs_table_create = """
-CREATE TABLE IF NOT EXISTS staging_songs
+staging_events_table_create = """
+CREATE TABLE IF NOT EXISTS staging_events
   (
      artist        VARCHAR NOT NULL,
      auth          VARCHAR NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS staging_songs
      location      VARCHAR,
      method        VARCHAR NOT NULL,
      page          VARCHAR NOT NULL,
-     registration  DECIMAL,
+     registration  TIMESTAMP,
      sessionid     INTEGER NOT NULL,
      song          VARCHAR NOT NULL,
      status        INTEGER NOT NULL,
@@ -63,13 +63,13 @@ CREATE TABLE IF NOT EXISTS songplay
   (
      songplay_id INTEGER IDENTITY(0,1) sortkey distkey,
      start_time  DATE NOT NULL,
-     user_id     VARCHAR FOREIGN KEY,
+     user_id     INTEGER,
      level       VARCHAR,
-     song_id     VARCHAR,
-     artist_id   VARCHAR,
+     song_id     VARCHAR NOT NULL,
+     artist_id   VARCHAR NOT NULL,
      session_id  VARCHAR NOT NULL,
      location    VARCHAR,
-     user_agent  VARCHAR NOT NULL,
+     user_agent  VARCHAR,
      PRIMARY KEY(songplay_id)
    )
 """
@@ -78,7 +78,7 @@ user_table_create = """
 CREATE TABLE IF NOT EXISTS users
 
   (
-     user_id    VARCHAR sortkey,
+     user_id    INTEGER sortkey,
      first_name VARCHAR,
      last_name  VARCHAR,
      gender     VARCHAR,
@@ -104,9 +104,9 @@ CREATE TABLE IF NOT EXISTS artist
   (
      artist_id VARCHAR sortkey,
      name      VARCHAR NOT NULL,
-     location  DECIMAL,
+     location  VARCHAR,
      latitude  DECIMAL,
-     longitude VARCHAR,
+     longitude DECIMAL,
      PRIMARY KEY(artist_id)
   )
 """
@@ -129,7 +129,10 @@ CREATE TABLE IF NOT EXISTS time
 
 staging_events_copy = """
 copy staging_events FROM '{}'
-iam_role '{}'
+iam_role  '{}'
+COMPUPDATE OFF region 'us-west-2'
+TIMEFORMAT as 'epochmillisecs'
+TRUNCATECOLUMNS BLANKSASNULL EMPTYASNULL
 format as json '{}'
 """.format(
     LOG_DATA, ARN, LOG_JSONPATH
@@ -138,8 +141,10 @@ format as json '{}'
 
 staging_songs_copy = """
 copy staging_songs FROM '{}'
-iam_role '{}'
-format as json 'auto'
+iam_role  '{}'
+COMPUPDATE OFF region 'us-west-2'
+FORMAT AS JSON 'auto'
+TRUNCATECOLUMNS BLANKSASNULL EMPTYASNULL;
 """.format(
     SONG_DATA, ARN
 )
